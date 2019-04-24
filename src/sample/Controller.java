@@ -1,5 +1,6 @@
 package sample;
 
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -13,12 +14,12 @@ import org.json.simple.parser.JSONParser;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 public class Controller {
+
     private JSONParser parser = new JSONParser();
     private Object obj;
     private JSONArray array = null;
@@ -38,7 +39,40 @@ public class Controller {
 
     @FXML
     private void initialize() {
+        Thread init = new Thread(() -> getData());
+        init.start();
+        country.setText("LOADING");
+        capital.setText("DATA");
+        ObservableList<Country> list = FXCollections.observableArrayList();
+        list.add(new Country("loading...", " "));
+        countriesListView.setItems(list);
+
+
+        countriesListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+            country.setText("country: " + newValue.getName());
+            capital.setText("capital: " + newValue.getCapital());
+        });
+
+
+        search.setOnKeyReleased((ob) -> {
+
+            String src = search.getCharacters().toString();
+            list.clear();
+            countriesListView.getItems().clear();
+            for (int j = 0; j < countries.size(); j++) {
+                if (countries.get(j).getName().contains(src)) {
+                    list.add(new Country(countries.get(j).getName(), countries.get(j).getCapital()));
+                }
+            }
+            countriesListView.setItems(list);
+        });
+
+    }
+
+    private void getData() {
+
         try {
+
             url = new URL("https://restcountries.eu/rest/v2/all");
             con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
@@ -70,27 +104,11 @@ public class Controller {
             countries.add(country);
         }
 
-
-        countriesListView.setItems(list);
-        country.setText("country: Romania");
-        capital.setText("capital: Bucuresti");
-        countriesListView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-            country.setText("country: " + newValue.getName());
-            capital.setText("capital: " + newValue.getCapital());
-        });
-
-
-        search.setOnKeyReleased((ob) -> {
-
-            String src = search.getCharacters().toString();
-            list.clear();
-            countriesListView.getItems().clear();
-            for (int j = 0; j < countries.size(); j++) {
-                if (countries.get(j).getName().contains(src)) {
-                    list.add(new Country(countries.get(j).getName(), countries.get(j).getCapital()));
-                }
-            }
+        Platform.runLater(() -> {
             countriesListView.setItems(list);
+            country.setText("country: Romania");
+            capital.setText("capital: Bucuresti");
         });
+
     }
 }
